@@ -16,7 +16,16 @@ dotenv.config({
     path: './.env'
 });
 
-connectDB();
+connectDB()
+    .then(() => {
+        app.listen(process.env.PORT || 8000, () => {
+            console.log('Server is running on port : ${process.env.PORT}');
+        })
+    })
+    .catch((err) => {
+        console.log("MONODB connection failed !!!", err);
+        
+})
 
 // 1st approach
 
@@ -40,4 +49,4 @@ connectDB();
 //         console.error("ERROR:", error);
 //         throw error;
 //     }
-//  })()
+//  })() 
