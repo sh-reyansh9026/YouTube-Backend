@@ -17,6 +17,7 @@ dotenv.config({
 });
 
 connectDB()
+    // for this .then and .catch , it is used everytime so a syncHandler file in utils folder is made to writr this code in that and use whereever required
     .then(() => {
         app.listen(process.env.PORT || 8000, () => {
             console.log('Server is running on port : ${process.env.PORT}');

@@ -4,7 +4,7 @@ const asyncHandler = (requestHandler) => {(req, res, next)=> {
 }
     
 }
-
+// to standardize error and response of api we make Apierror and apiResponse classes 
 
 export { asyncHandler }
 // const asyncHandler = () => { }
