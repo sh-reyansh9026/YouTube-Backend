@@ -17,4 +17,12 @@ app.use(express.static("public")) // if needed to store some pdf files ,images e
 app.use(cookieParser()) // to apply CURD opertaion on cookies
 
 
+
+// routes import
+import userRouter from './routes/user.routes.js'
+
+// routes declaration
+// here url will be like https://localhost:8000/api/v1/users/register (because userRouter hits register route or it can be any other route also like login we do need to define again and again in apps.js file)
+app.use("/api/v1/users",userRouter) // here app.use is used because routes are segregated so to call them we have to use middleware and middleware works with .use function
+//when /users is used then it transfers to userRoutes where other routes are defined
 export {app}

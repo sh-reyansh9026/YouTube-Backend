@@ -10,4 +10,4 @@ const storage = multer.diskStorage({ // cb is callback
   }
 })
 
-export const upload = multer({ storage, })  
+export const upload = multer({ storage, })   
