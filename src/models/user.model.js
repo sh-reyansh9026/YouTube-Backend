@@ -52,7 +52,7 @@ userSchema.pre("save", async function (next) {
     if (!this.isModified("password")) // here checking iff password is changed then only encrypt the password otherwise no need to chnage encryption on every time of saving
         return next();
 
-    this.password = bcrypt.hash(this.password,10) // here 10 refers to round of hash function that how much rounds are to be used for encrypting
+    this.password = await bcrypt.hash(this.password,10) // here 10 refers to round of hash function that how much rounds are to be used for encrypting
     next()
 })
 
