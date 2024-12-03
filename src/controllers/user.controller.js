@@ -19,7 +19,7 @@ const registerUser = asyncHandler(async (req, res) => {
 
     // 1.get user details from frontend
     const { fullName, email, username, password } = req.body
-    console.log("email", email);
+    // console.log("email", email);
 
     // 2.validate -- not empty
     // if (fullName === "") {// either check one by one like this or make an array
@@ -34,7 +34,7 @@ const registerUser = asyncHandler(async (req, res) => {
     }
 
     // 3.check if user already exists: username,email
-    const existedUser = User.findOne({
+    const existedUser = await User.findOne({
         $or: [{ username }, { email }] // this $or:[] is used to check condition for or operator btw different array elements
     })
     if (existedUser) { //checking condition if existedUser returns true 
@@ -42,14 +42,19 @@ const registerUser = asyncHandler(async (req, res) => {
     }
 
     // 4.check for images, check for avatar
-    // generally we get va;ues using req.body but we have made middleware also so middleware basically adds more values to req.body so we use req.files instead of req.body here when middleware is used
+    // generally we get values using req.body but we have made middleware also so middleware basically adds more values to req.body so we use req.files instead of req.body here when middleware is used
     const avatarLocalPath = req.files?.avatar[0]?.path; // .avatar bcoz avatar is defined previously
-    const coverImageLocalPath = req.files?.coverImage[0]?.path; // .coverImage bcoz coverImage is defined previously
+    // const coverImageLocalPath = req.files?.coverImage[0]?.path; // .coverImage bcoz coverImage is defined previously
+    let coverImageLocalPath;
+    if (req.files && Array.isArray(req.files?.coverImage) && req.files.coverImage.length > 0) {
+        coverImageLocalPath=req.files.coverImage[0].path
+    }
 
     if (!avatarLocalPath) {// coverImage is not compulsory so it is not checked
         throw new Error(400, "Avatar file is required");
     }
-
+    // console.log(req.files);
+    
     // 5.upload them to cloudinary, avatar
     const avatar = await uploadOnCloudinary(avatarLocalPath) // it takes time to upload so await is used
     const coverImage = await uploadOnCloudinary(coverImageLocalPath)
