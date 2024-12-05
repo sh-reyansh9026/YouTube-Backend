@@ -281,7 +281,7 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
 const getCurrentUser = asyncHandler(async (req, res) => {
     // we have to get user info from req.user as user is already logged in
     return res.status(200)
-    .json(200,req.user,"current user fetched successfully")
+    .json(new ApiResponse(200,req.user,"current user fetched successfully"))
 })
 
 // allowing user that which detail user can change 
@@ -316,6 +316,9 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
     if (!avatarLocalPath) {
         throw new ApiError(400, "Avatar file is missing")
     }
+
+    // TODO : DELETE PREVIOUS AVATAR
+
     // upload avatar file on cloudinary using uploadOnCloudinary method we have already defined
     const avatar = await uploadOnCloudinary(avatarLocalPath) 
     // if we do not get avatar url then throw error
@@ -338,7 +341,7 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
         new ApiResponse(200,user,"Avatar image updated successfully")
     )
 })
-
+// updating user coverImage in the same way as of avatar
 const updateUserCoverImage = asyncHandler(async (req, res) => {
     const coverImageLocalPath = req.file?.path
     if (!coverImageLocalPath) {
@@ -364,6 +367,89 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
     )
 
 })
+
+// controller to count no of subscriber and no of channels a particular user subscribed
+// it is done using aggregation pipeline
+// aggregation pipeline means the stages ... result of one stage is input of other
+// means if we filter the input at any stage then to next stage only filtered input act as input
+const getUserChannelProfile = asyncHandler(async (req, res) => {
+    const { username } = req.params // here req.params is used bcz here we want username only so it is a parameter
+    if (!username?.trim()) {
+        throw new ApiError(400, "Username is missing")
+    }
+    // if username is there
+    // it can be done using this way also
+    // const user = await User.findOne({ username: username.trim() })
+    // but here we use aggregation pipeline bcoz after getting username we have to find user._id then we execute it in aggregation piepline 
+    // but here we directly use aggregation piepline over username
+    
+    // aggregation pipeline returns array values
+    const channnel = await User.aggregate([
+        {
+            $match: { // it filters the input to particular username here we get all details of that particular username which is passed to next stage
+                username: username?.toLowerCase()
+            },
+        },
+        // how many subscribers channel with username have
+        {
+            $lookup: {// this is used to look for details of particular username
+                from: "subscriptions", // from the collection "subscriptions" it is actually defined as "Subscription" in subscription.model.js but in db it will be saved as all lower case with plural
+                localField: "_id", // here we are looking for id of user in subscriptions collection
+                foreignField: "channel", // here we are looking for channel in subscriptions collection
+                as: "subscribers" // saved as subscribers
+            }
+        },
+        // how many channels that user with username subscribed
+        {
+            $lookup: {
+                from: "subscriptions",
+                localField: "_id",
+                foreignField: "subscriber",
+                as: "subscribedTo"
+            }
+        },
+        // to add above two fields
+        {
+            $addFields: {
+                subscribersCount: {
+                    $size: "$subscribers" // from subscribers field defined above,$size is giving count as result of every stage is array
+                },
+                channelsSubscribedToCount: {
+                    $size: "$subscribedTo" // from subscribedTo field defined above,$size is giving count as result of every stage is array
+                },
+                isSubscribed: {
+                    $cond: { // $cond has three parts if,then,else 
+                        if: { $in: [req.user?_id, "$subscribers.subscriber"] }, // used to check if in the document of $subscribers.subscriber req.user?._id is present or not
+                        then: true, // if condition is true then it will return true
+                        else: false
+                    }
+                }
+            }
+        },
+        // selected final values to show 
+        {
+            $project: {// this $project gives projected(selected) values only , to select values give value is equal to 1
+                fullName: 1,
+                username: 1,
+                subscribersCount: 1,
+                channelsSubscribedToCount: 1,
+                isSubscribed: 1,
+                avatar: 1,
+                coverImage: 1,
+                email: 1
+            }
+        }
+
+    ])
+
+    // if channel does not exist
+    if (!channel?.length) {
+        throw new ApiError(404, "channel does not exists")
+    }
+    // if channel exists then return response
+    return res.status(200)
+    .json(new ApiResponse(200,channel[0],"User channel fetched successfully"))
+}) 
 
 export {
     registerUser,
