@@ -384,7 +384,7 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
     // but here we directly use aggregation piepline over username
     
     // aggregation pipeline returns array values
-    const channnel = await User.aggregate([
+    const channel = await User.aggregate([
         {
             $match: { // it filters the input to particular username here we get all details of that particular username which is passed to next stage
                 username: username?.toLowerCase()
@@ -418,8 +418,8 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
                     $size: "$subscribedTo" // from subscribedTo field defined above,$size is giving count as result of every stage is array
                 },
                 isSubscribed: {
-                    $cond: { // $cond has three parts if,then,else 
-                        if: { $in: [req.user?_id, "$subscribers.subscriber"] }, // used to check if in the document of $subscribers.subscriber req.user?._id is present or not
+                    $cond: { // $cond has three parts if,then,else ,$ is used to represent fields
+                        if: { $in: [req.user ?._id,"$subscribers.subscriber"] }, // used to check if in the document of $subscribers.subscriber req.user?._id is present or not
                         then: true, // if condition is true then it will return true
                         else: false
                     }
@@ -450,7 +450,70 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
     return res.status(200)
     .json(new ApiResponse(200,channel[0],"User channel fetched successfully"))
 }) 
+ 
+// code to get user history
+// for user history we push the id's to watch history and id is itself a user so we use $lookup: -> it gives many documents which has id's(user) in watch history
+// and in watch history we need owner also bcoz we have to show owner on the frontend so owner again is user so we again have to use $lookup:-> here is nested lookup for each document in watch history fetching watching history 
+const getWatchHistory = asyncHandler(async (req, res) => {
+    const user = await User.aggregate([
+        {
+            // here $match is used to filter the particular username for whose watch history we are concerned for 
+            $match: {
+                // here req.user._id gives string but mongoose internally handles it
+                // but while writing aggregation pipelines,mongoose do not work, 
+                //code goes as it is, but as if it goes as it is then it will be in string format, 
+                //so we have to take care of it, we have to write user_id in other format
+                // below is the format
+                _id: new mongoose.Types.ObjectId(req.user._id)
+            }
+        },
+        {
+            // here we have to lookup for watch history, an in result we get many documents each containing the watched videos as watch history for each video
+            $lookup: {
+                from: "videos",
+                localField: "watchHistory",
+                foreignField: "_id",
+                as: "watchHistory",
+                // here we are going to use nested pipeline by using keyword pipeline for getting owner of each document
+                pipeline: [
+                    {
+                        $lookup: {
+                            from: "users",
+                            localField: "owner",
+                            foreignField: "_id",
+                            as: "owner",
+                            // here we are using nested pipeline bcoz we get all fields of videos
+                            // but on frontend we have to show only few so we have to use project to filter out those
+                            pipeline: [
+                                {
+                                    $project: {
+                                        fullName: 1,
+                                        username: 1,
+                                        avatar: 1
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    // from this above pipeline we get Array in result as owner so we have to take out its owner[0] field so we use one more pipeline whcih directly gives owner[0] as result
+                    {
+                        $addFields: {// we can add extra field but we used prevoius one rewrite it so to reuse space
+                            owner: {
+                                $first:"owner"
+                            }
+                        }
+                    }
+                ]
+            }
+        }
 
+        
+    ])
+    return res.status(200)
+        .json(new ApiResponse(
+        200,user[0].watchHistory,"Watched history fetched successfully"
+    ))
+})
 export {
     registerUser,
     loginUser,
@@ -460,5 +523,7 @@ export {
     getCurrentUser,
     updateAccountDetails,
     updateUserAvatar,
-    updateUserCoverImage
+    updateUserCoverImage,
+    getUserChannelProfile,
+    getWatchHistory
 }
