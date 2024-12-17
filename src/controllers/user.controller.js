@@ -176,9 +176,11 @@ const loginUser = asyncHandler(async (req, res) => {
 //                   logout user
 const logoutUser = asyncHandler(async (req, res) => {
     // this method is accessed after /logout route in user.route then middleware that is verify JWT then logoutUser so from verifyJWT we get access of req.user
-    await User.findByIdAndUpdate(req.user._id, {// this parameter is for what to update
-        $set: {
-            refreshToken: undefined // updated
+    await User.findByIdAndUpdate(
+        req.user._id,
+        {// this parameter is for what to update
+        $unset: {
+            refreshToken: 1 // updated,this removes the field from document
         }
     },
         {
